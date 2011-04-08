@@ -1,5 +1,9 @@
 package bayes
 
+import (
+	"go-glue.googlecode.com/hg/rltools/discrete"
+)
+
 type CountKnown struct {
 	numStates uint64
 	visits    []int
@@ -13,17 +17,20 @@ func NewCountKnown(numStates, numActions uint64, threshold int) (this *CountKnow
 	this.threshold = threshold
 	return
 }
-func (this *CountKnown) Update(s, a uint64) (next KnownBelief) {
+func (this *CountKnown) Update(s discrete.State, a discrete.Action) (next KnownBelief) {
 	nk := new(CountKnown)
 	nk.numStates = this.numStates
 	nk.visits = make([]int, len(this.visits))
 	copy(nk.visits, this.visits)
 	nk.threshold = this.threshold
 
-	nk.visits[s+nk.numStates*a]++
+	k := s.Hashcode()+nk.numStates*a.Hashcode()
+
+	nk.visits[k]++
 	next = nk
 	return
 }
-func (this *CountKnown) Known(s, a uint64) (known bool) {
-	return this.visits[s+this.numStates*a] >= this.threshold
+func (this *CountKnown) Known(s discrete.State, a discrete.Action) (known bool) {
+	k := s.Hashcode()+this.numStates*a.Hashcode()
+	return this.visits[k] >= this.threshold
 }

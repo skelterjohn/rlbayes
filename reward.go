@@ -2,11 +2,12 @@ package bayes
 
 import (
 	"gostat.googlecode.com/hg/stat"
+	"go-glue.googlecode.com/hg/rltools/discrete"
 )
 // prior for a known reward
 
 type KnownReward struct {
-	Foo func(s, a uint64) (r float64)
+	Foo func(s discrete.State, a discrete.Action) (r float64)
 }
 
 func (this *KnownReward) Hashcode() uint64 {
@@ -18,10 +19,10 @@ func (this *KnownReward) Equals(other interface{}) bool {
 func (this *KnownReward) LessThan(other interface{}) bool {
 	return this.Foo != other.(*KnownReward).Foo
 }
-func (this *KnownReward) Next(s, a uint64) (r float64) {
+func (this *KnownReward) Next(s discrete.State, a discrete.Action) (r float64) {
 	return this.Foo(s, a)
 }
-func (this *KnownReward) Update(s, a uint64, r float64) (next RewardBelief) {
+func (this *KnownReward) Update(s discrete.State, a discrete.Action, r float64) (next RewardBelief) {
 	return this
 }
 
@@ -82,11 +83,11 @@ func (this *RmaxReward) LessThan(other interface{}) bool {
 	//equal -> false
 	return false
 }
-func (this *RmaxReward) Next(s, a uint64) (r float64) {
-	return this.R[s+this.NumStates*a]
+func (this *RmaxReward) Next(s discrete.State, a discrete.Action) (r float64) {
+	return this.R[s.Hashcode()+this.NumStates*a.Hashcode()]
 }
-func (this *RmaxReward) Update(s, a uint64, r float64) (next RewardBelief) {
-	index := s + this.NumStates*a
+func (this *RmaxReward) Update(s discrete.State, a discrete.Action, r float64) (next RewardBelief) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.R[index] == r {
 		return this
 	}
@@ -148,8 +149,8 @@ func (this *DeterministicReward) LessThan(other interface{}) bool {
 
 	return false
 }
-func (this *DeterministicReward) Next(s, a uint64) (r float64) {
-	index := s + this.NumStates*a
+func (this *DeterministicReward) Next(s discrete.State, a discrete.Action) (r float64) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.Known[index] {
 		r = this.R[index]
 		return
@@ -157,8 +158,8 @@ func (this *DeterministicReward) Next(s, a uint64) (r float64) {
 	r = this.BaseSampler()
 	return
 }
-func (this *DeterministicReward) Update(s, a uint64, r float64) (next RewardBelief) {
-	index := s + this.NumStates*a
+func (this *DeterministicReward) Update(s discrete.State, a discrete.Action, r float64) (next RewardBelief) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.Known[index] {
 		return this
 	}
@@ -234,8 +235,8 @@ func (this *CRPReward) LessThan(other interface{}) bool {
 	}
 	return false
 }
-func (this *CRPReward) Next(s, a uint64) (r float64) {
-	index := s + this.NumStates*a
+func (this *CRPReward) Next(s discrete.State, a discrete.Action) (r float64) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.Known[index] {
 		r = this.R[index]
 		return
@@ -263,8 +264,8 @@ func (this *CRPReward) Next(s, a uint64) (r float64) {
 
 	return
 }
-func (this *CRPReward) Update(s, a uint64, r float64) (next RewardBelief) {
-	index := s + this.NumStates*a
+func (this *CRPReward) Update(s discrete.State, a discrete.Action, r float64) (next RewardBelief) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.Known[index] {
 		return this
 	}

@@ -8,48 +8,48 @@ import (
 
 type RewardBelief interface {
 	hashlessmap.HasherLess
-	Next(s, a uint64) (r float64)
-	Update(s, a uint64, r float64) (next RewardBelief)
+	Next(s discrete.State, a discrete.Action) (r float64)
+	Update(s discrete.State, a discrete.Action, r float64) (next RewardBelief)
 }
 
 type TransitionBelief interface {
 	hashlessmap.HasherLess
-	Next(s, a uint64) (n uint64)
-	Update(s, a, n uint64) (next TransitionBelief)
+	Next(s discrete.State, a discrete.Action) (n discrete.State)
+	Update(s discrete.State, a discrete.Action, n discrete.State) (next TransitionBelief)
 }
 
 type TerminalBelief interface {
 	hashlessmap.HasherLess
-	Next(s, a uint64) (t bool)
-	Update(s, a uint64, t bool) (next TerminalBelief)
+	Next(s discrete.State, a discrete.Action) (t bool)
+	Update(s discrete.State, a discrete.Action, t bool) (next TerminalBelief)
 }
 
 type KnownBelief interface {
-	Update(s, a uint64) (next KnownBelief)
-	Known(s, a uint64) (known bool)
+	Update(s discrete.State, a discrete.Action) (next KnownBelief)
+	Known(s discrete.State, a discrete.Action) (known bool)
 }
 
 type BeliefState interface {
 	discrete.Oracle
-	Update(action uint64, state uint64, reward float64) (next BeliefState)
-	UpdateTerminal(action uint64, reward float64) (next BeliefState)
-	Teleport(state uint64)
-	GetState() uint64
+	Update(action discrete.Action, state discrete.State, reward float64) (next BeliefState)
+	UpdateTerminal(action discrete.Action, reward float64) (next BeliefState)
+	Teleport(state discrete.State)
+	GetState() discrete.State
 }
 
 type Belief struct {
-	State        uint64
+	State        discrete.State
 	depth        int
 	Reward       RewardBelief
 	Transition   TransitionBelief
 	TerminalB    TerminalBelief
 	Known        KnownBelief
 	IsTerminal   bool
-	ActionFilter func(belief *Belief, action uint64) bool
+	ActionFilter func(belief *Belief, action discrete.Action) bool
 	hash         uint64
 }
 
-func (this *Belief) ActionAvailable(action uint64) bool {
+func (this *Belief) ActionAvailable(action discrete.Action) bool {
 	if this.ActionFilter != nil {
 		return this.ActionFilter(this, action)
 	}
@@ -64,7 +64,7 @@ func (this *Belief) String() (res string) {
 	return
 }
 
-func NewBelief(state uint64, reward RewardBelief, transition TransitionBelief, terminal TerminalBelief, known KnownBelief) (this *Belief) {
+func NewBelief(state discrete.State, reward RewardBelief, transition TransitionBelief, terminal TerminalBelief, known KnownBelief) (this *Belief) {
 	this = new(Belief)
 
 	this.State = state
@@ -74,7 +74,7 @@ func NewBelief(state uint64, reward RewardBelief, transition TransitionBelief, t
 	this.TerminalB = terminal
 	this.Known = known
 
-	this.hash = this.State
+	this.hash = this.State.Hashcode()
 	this.hash += this.Reward.Hashcode()
 	this.hash += this.Transition.Hashcode()
 	this.hash += this.TerminalB.Hashcode()
@@ -94,7 +94,7 @@ func (this *Belief) Equals(other interface{}) bool {
 func (this *Belief) LessThan(other interface{}) bool {
 	ob := other.(*Belief)
 
-	if this.State < ob.State {
+	if this.State.LessThan(ob.State) {
 		return true
 	}
 	if this.Reward.LessThan(ob.Reward) {
@@ -112,7 +112,7 @@ func (this *Belief) LessThan(other interface{}) bool {
 
 	return false
 }
-func (this *Belief) Next(action uint64) (o discrete.Oracle, r float64) {
+func (this *Belief) Next(action discrete.Action) (o discrete.Oracle, r float64) {
 	n := this.Transition.Next(this.State, action)
 	r = this.Reward.Next(this.State, action)
 	t := this.TerminalB.Next(this.State, action)
@@ -135,17 +135,17 @@ func (this *Belief) Next(action uint64) (o discrete.Oracle, r float64) {
 func (this *Belief) Terminal() bool {
 	return this.IsTerminal
 }
-func (this *Belief) GetState() (state uint64) {
+func (this *Belief) GetState() (state discrete.State) {
 	state = this.State
 	return
 }
-func (this *Belief) Teleport(state uint64) {
-	this.hash -= this.State
+func (this *Belief) Teleport(state discrete.State) {
+	this.hash -= this.State.Hashcode()
 	this.State = state
 	this.IsTerminal = false
-	this.hash += this.State
+	this.hash += this.State.Hashcode()
 }
-func (this *Belief) UpdateTerminal(action uint64, r float64) BeliefState {
+func (this *Belief) UpdateTerminal(action discrete.Action, r float64) BeliefState {
 	next := new(Belief)
 	*next = *this //shallow copy
 	next.IsTerminal = true
@@ -156,7 +156,7 @@ func (this *Belief) UpdateTerminal(action uint64, r float64) BeliefState {
 	}
 	return next
 }
-func (this *Belief) Update(action uint64, n uint64, r float64) BeliefState {
+func (this *Belief) Update(action discrete.Action, n discrete.State, r float64) BeliefState {
 	next := new(Belief)
 
 	if this.Known != nil && this.Known.Known(this.State, action) {
@@ -171,7 +171,7 @@ func (this *Belief) Update(action uint64, n uint64, r float64) BeliefState {
 		next.IsTerminal = false
 		next.TerminalB = this.TerminalB.Update(next.State, action, false)
 		next.ActionFilter = this.ActionFilter
-		next.hash = next.State
+		next.hash = next.State.Hashcode()
 		next.hash += next.Reward.Hashcode()
 		next.hash += next.Transition.Hashcode()
 		next.hash += next.TerminalB.Hashcode()

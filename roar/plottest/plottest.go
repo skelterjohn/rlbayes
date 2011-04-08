@@ -13,16 +13,16 @@ import (
 )
 
 const (
-	spanX	= 10
-	spanY	= 10
+	spanX = 10
+	spanY = 10
 )
 
 var (
-	block	chan bool
-	window	draw.Window
-	running	bool
-	rpost	*roar.Posterior
-	colors	= []image.RGBAColor{image.RGBAColor{255, 0, 0, 255}, image.RGBAColor{0, 255, 0, 255}, image.RGBAColor{0, 0, 255, 255}, image.RGBAColor{0, 255, 255, 255}, image.RGBAColor{255, 0, 255, 255}, image.RGBAColor{255, 255, 0, 255}}
+	block   chan bool
+	window  draw.Window
+	running bool
+	rpost   *roar.Posterior
+	colors  = []image.RGBAColor{image.RGBAColor{255, 0, 0, 255}, image.RGBAColor{0, 255, 0, 255}, image.RGBAColor{0, 0, 255, 255}, image.RGBAColor{0, 255, 255, 255}, image.RGBAColor{255, 0, 255, 255}, image.RGBAColor{255, 255, 0, 255}}
 )
 
 func clearScreen() {

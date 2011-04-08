@@ -2,10 +2,11 @@ package bayes
 
 import (
 	"gostat.googlecode.com/hg/stat"
+	"go-glue.googlecode.com/hg/rltools/discrete"
 )
 
 type KnownTerminal struct {
-	Foo func(s, a uint64) (t bool)
+	Foo func(s discrete.State, a discrete.Action) (t bool)
 }
 
 func (this *KnownTerminal) Hashcode() uint64 {
@@ -17,11 +18,11 @@ func (this *KnownTerminal) Equals(other interface{}) bool {
 func (this *KnownTerminal) LessThan(other interface{}) bool {
 	return this.Foo != other.(*KnownTerminal).Foo
 }
-func (this *KnownTerminal) Next(s, a uint64) (t bool) {
+func (this *KnownTerminal) Next(s discrete.State, a discrete.Action) (t bool) {
 	t = this.Foo(s, a)
 	return
 }
-func (this *KnownTerminal) Update(s, a uint64, t bool) (next TerminalBelief) {
+func (this *KnownTerminal) Update(s discrete.State, a discrete.Action, t bool) (next TerminalBelief) {
 	return this
 }
 
@@ -79,8 +80,8 @@ func (this *BetaTerminal) LessThan(other interface{}) bool {
 	}
 	return false
 }
-func (this *BetaTerminal) Next(s, a uint64) (t bool) {
-	index := s + this.NumStates*a
+func (this *BetaTerminal) Next(s discrete.State, a discrete.Action) (t bool) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.Known[index] {
 		t = this.Term[index]
 		return
@@ -91,8 +92,8 @@ func (this *BetaTerminal) Next(s, a uint64) (t bool) {
 	}
 	return
 }
-func (this *BetaTerminal) Update(s, a uint64, t bool) (next TerminalBelief) {
-	index := s + this.NumStates*a
+func (this *BetaTerminal) Update(s discrete.State, a discrete.Action, t bool) (next TerminalBelief) {
+	index := s.Hashcode() + this.NumStates*a.Hashcode()
 	if this.Known[index] {
 		next = this
 		return

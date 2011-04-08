@@ -3,6 +3,7 @@ package bayes
 import (
 	"fmt"
 	"gostat.googlecode.com/hg/stat"
+	"go-glue.googlecode.com/hg/rltools/discrete"
 )
 
 type DirSA struct {
@@ -57,27 +58,27 @@ func (this *DirSA) LessThan(other interface{}) bool {
 	}
 	return false
 }
-func (this *DirSA) Next() (n uint64) {
+func (this *DirSA) Next() (n discrete.State) {
 	if this.weights == nil {
 		this.weights = make([]float64, len(this.counts))
 		for i, c := range this.counts {
 			this.weights[i] = c / this.total
 		}
 	}
-	n = uint64(stat.NextChoice(this.weights))
+	n = discrete.State(stat.NextChoice(this.weights))
 	return
 }
-func (this *DirSA) Update(n uint64) (next *DirSA) {
+func (this *DirSA) Update(n discrete.State) (next *DirSA) {
 	next = new(DirSA)
 	next.counts = make([]float64, len(this.counts))
 	copy(next.counts, this.counts)
-	if n >= uint64(len(next.counts)) {
+	if n >= discrete.State(len(next.counts)) {
 		panic(fmt.Sprintf("%d for %d", n, len(next.counts)))
 	}
 	next.counts[n] += 1
 	next.total = this.total + 1
 	next.visits = this.visits + 1
-	next.hash = this.hash + n
+	next.hash = this.hash + n.Hashcode()
 	return
 }
 func (this *DirSA) ForgetPrior(alpha []float64) {
@@ -96,8 +97,8 @@ func (this *DirSA) String() string {
 
 type FDMTransitionBaggage struct {
 	NumStates, NumActions uint64
-	NextToOutcome         func(s, n uint64) (o uint64)
-	OutcomeToNext         func(s, o uint64) (n uint64)
+	NextToOutcome         func(s, n discrete.State) (o discrete.State)
+	OutcomeToNext         func(s, o discrete.State) (n discrete.State)
 	Alpha                 []float64
 	ForgetThreshold       uint64
 }
@@ -137,8 +138,8 @@ func (this *FDMTransition) LessThan(other interface{}) bool {
 	}
 	return false
 }
-func (this *FDMTransition) Next(s, a uint64) (n uint64) {
-	k := s + a*this.bg.NumStates
+func (this *FDMTransition) Next(s discrete.State, a discrete.Action) (n discrete.State) {
+	k := s.Hashcode() + a.Hashcode()*this.bg.NumStates
 	dsa := this.sas[k]
 	if dsa == nil {
 		dsa = NewDirSA(this.bg.Alpha)
@@ -147,9 +148,9 @@ func (this *FDMTransition) Next(s, a uint64) (n uint64) {
 	n = this.bg.OutcomeToNext(s, dsa.Next())
 	return
 }
-func (this *FDMTransition) Update(s, a, n uint64) (next TransitionBelief) {
+func (this *FDMTransition) Update(s discrete.State, a discrete.Action, n discrete.State) (next TransitionBelief) {
 	o := this.bg.NextToOutcome(s, n)
-	k := s + this.bg.NumStates*a
+	k := s.Hashcode() + a.Hashcode()*this.bg.NumStates
 	dsa := this.sas[k]
 	if dsa == nil {
 		dsa = NewDirSA(this.bg.Alpha)
@@ -176,11 +177,13 @@ func (this *FDMTransition) Update(s, a, n uint64) (next TransitionBelief) {
 	return
 }
 func (this *FDMTransition) String() (res string) {
-	var s, a uint64
-	for s = 0; s < this.bg.NumStates; s++ {
+	for s := range discrete.AllStates64(this.bg.NumStates) {
+	//for s = 0; s < this.bg.NumStates; s++ {
 		res += fmt.Sprintf("\ns%d:", s)
-		for a = 0; a < uint64(len(this.sas))/this.bg.NumStates; a++ {
-			res += this.sas[s+this.bg.NumStates*a].String()
+		for a := range discrete.AllActions64(uint64(len(this.sas))/this.bg.NumStates) {
+		//for a = 0; a < uint64(len(this.sas))/this.bg.NumStates; a++ {
+			k := s.Hashcode() + a.Hashcode()*this.bg.NumStates
+			res += this.sas[k].String()
 		}
 	}
 	return

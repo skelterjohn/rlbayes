@@ -15,15 +15,16 @@ func (this *MDPTransition) Hashcode() uint64 {
 func (this *MDPTransition) LessThan(oi interface{}) bool {
 	return false
 }
-func (this *MDPTransition) Next(s, a uint64) (n uint64) {
-	weights := make([]float64, this.MDP.S())
-	for n := uint64(0); n < this.MDP.S(); n++ {
+func (this *MDPTransition) Next(s discrete.State, a discrete.Action) (n discrete.State) {
+	weights := make([]float64, this.MDP.NumStates())
+	for n := range this.MDP.S64() {
+	//for n := uint64(0); n < this.MDP.S(); n++ {
 		weights[n] = this.MDP.T(s, a, n)
 	}
-	n = uint64(stat.NextChoice(weights))
+	n = discrete.State(stat.NextChoice(weights))
 	return
 }
-func (this *MDPTransition) Update(s, a, n uint64) (next TransitionBelief) {
+func (this *MDPTransition) Update(s discrete.State, a discrete.Action, n discrete.State) (next TransitionBelief) {
 	return this
 }
 
@@ -37,11 +38,11 @@ func (this *MDPReward) Hashcode() uint64 {
 func (this *MDPReward) LessThan(oi interface{}) bool {
 	return false
 }
-func (this *MDPReward) Next(s, a uint64) (r float64) {
+func (this *MDPReward) Next(s discrete.State, a discrete.Action) (r float64) {
 	r = this.MDP.R(s, a)
 	return
 }
-func (this *MDPReward) Update(s, a uint64, r float64) (next RewardBelief) {
+func (this *MDPReward) Update(s discrete.State, a discrete.Action, r float64) (next RewardBelief) {
 	next = this
 	return
 }
@@ -56,9 +57,9 @@ func (this *MDPTerminal) Hashcode() uint64 {
 func (this *MDPTerminal) LessThan(oi interface{}) bool {
 	return false
 }
-func (this *MDPTerminal) Next(s, a uint64) (t bool) {
-	return this.MDPTransition.Next(s, a) == this.MDP.S()
+func (this *MDPTerminal) Next(s discrete.State, a discrete.Action) (t bool) {
+	return this.MDPTransition.Next(s, a).Hashcode() == this.MDP.NumStates()
 }
-func (this *MDPTerminal) Update(s, a uint64, t bool) (next TerminalBelief) {
+func (this *MDPTerminal) Update(s discrete.State, a discrete.Action, t bool) (next TerminalBelief) {
 	return this
 }

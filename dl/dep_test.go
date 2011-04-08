@@ -17,10 +17,10 @@ func abs(f float64) float64 {
 }
 
 const (
-	seed	= 6
-	steps	= 1e3
-	alpha	= 1
-	M	= 20
+	seed  = 6
+	steps = 1e3
+	alpha = 1
+	M     = 20
 )
 
 func TestDepMatch(t *testing.T) {

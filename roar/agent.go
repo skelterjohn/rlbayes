@@ -7,8 +7,8 @@ import (
 )
 
 type AgentCFG struct {
-	Scale		float64
-	Intensity	int
+	Scale     float64
+	Intensity int
 }
 
 func AgentCFGDefault() (cfg AgentCFG) {
@@ -18,12 +18,12 @@ func AgentCFGDefault() (cfg AgentCFG) {
 }
 
 type ROARAgent struct {
-	Cfg		AgentCFG
-	task		*rlglue.TaskSpec
-	LastObs		rlglue.Observation
-	LastAct		rlglue.Action
-	numFeatures	int
-	rpost		[]*Posterior
+	Cfg         AgentCFG
+	task        *rlglue.TaskSpec
+	LastObs     rlglue.Observation
+	LastAct     rlglue.Action
+	numFeatures int
+	rpost       []*Posterior
 }
 
 func NewROARAgent(Cfg AgentCFG) (this *ROARAgent) {

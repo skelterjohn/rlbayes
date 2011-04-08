@@ -4,26 +4,27 @@ import (
 	"math"
 	"gostat.googlecode.com/hg/stat"
 	"go-glue.googlecode.com/hg/rlglue"
+	"go-glue.googlecode.com/hg/rltools/discrete"
 )
 
 type DBaggage struct {
-	cfg			Config
-	myRange			rlglue.IntRange
-	ranges			rlglue.IntRanges
-	numStates, numActions	uint64
-	numOutcomes		uint64
-	stateValues		[][]int32
-	alphaLogFactor		float64
+	cfg                   Config
+	myRange               rlglue.IntRange
+	ranges                rlglue.IntRanges
+	numStates, numActions uint64
+	numOutcomes           uint64
+	stateValues           [][]int32
+	alphaLogFactor        float64
 }
 type DepLearner struct {
-	bg		*DBaggage
-	history		[]Histogram
-	parents		ParentSet
-	cutRanges	rlglue.IntRanges
-	mappedHistory	[]Histogram
-	mappedLoglihood	float64
-	consistency	int
-	hash		uint64
+	bg              *DBaggage
+	history         []Histogram
+	parents         ParentSet
+	cutRanges       rlglue.IntRanges
+	mappedHistory   []Histogram
+	mappedLoglihood float64
+	consistency     int
+	hash            uint64
 }
 
 func NewDepLearner(child int, cfg Config, stateRanges, actionRanges rlglue.IntRanges) (this *DepLearner) {
@@ -50,8 +51,8 @@ func NewDepLearner(child int, cfg Config, stateRanges, actionRanges rlglue.IntRa
 	this.mappedLoglihood = this.MappedLoglihoodRatio(this.mappedHistory)
 	return
 }
-func (this *DepLearner) Update(s, a uint64, o int32) (next *DepLearner) {
-	k := a + this.bg.numActions*s
+func (this *DepLearner) Update(s discrete.State, a discrete.Action, o int32) (next *DepLearner) {
+	k := a.Hashcode() + this.bg.numActions*s.Hashcode()
 	next = new(DepLearner)
 	*next = *this
 	oi := this.bg.myRange.Index(o)
@@ -60,7 +61,7 @@ func (this *DepLearner) Update(s, a uint64, o int32) (next *DepLearner) {
 	sv := next.bg.stateValues[s]
 	mv := next.parents.CutValues(sv)
 	ms := next.cutRanges.Index(mv)
-	mk := a + this.bg.numActions*ms
+	mk := a.Hashcode() + this.bg.numActions*ms
 	next.mappedHistory = append([]Histogram{}, this.mappedHistory...)
 	next.mappedLoglihood += next.mappedHistory[mk].LogFactorAlpha(this.bg.cfg.Alpha)
 	next.mappedHistory[mk] = next.mappedHistory[mk].Incr(oi)
@@ -68,11 +69,11 @@ func (this *DepLearner) Update(s, a uint64, o int32) (next *DepLearner) {
 	next.hash += k << oi
 	return
 }
-func (this *DepLearner) Next(s, a uint64) (o int32) {
+func (this *DepLearner) Next(s discrete.State, a discrete.Action) (o int32) {
 	sv := this.bg.stateValues[s]
 	mv := this.parents.CutValues(sv)
 	ms := this.cutRanges.Index(mv)
-	mk := a + this.bg.numActions*ms
+	mk := a.Hashcode() + this.bg.numActions*ms
 	h := this.mappedHistory[mk]
 	lls := make([]float64, len(h))
 	usePrior := h.Sum() < this.bg.cfg.M

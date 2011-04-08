@@ -3,20 +3,21 @@ package dl
 import (
 	"gostat.googlecode.com/hg/stat"
 	"go-glue.googlecode.com/hg/rlglue"
+	"go-glue.googlecode.com/hg/rltools/discrete"
 	"github.com/skelterjohn/rlbayes"
 )
 
 type BBaggage struct {
-	cfg			Config
-	task			*rlglue.TaskSpec
-	numStates, numActions	uint64
-	stateValues		[][]int32
+	cfg                   Config
+	task                  *rlglue.TaskSpec
+	numStates, numActions uint64
+	stateValues           [][]int32
 }
 type Belief struct {
-	bg		*BBaggage
-	learners	[]*DepLearner
-	totals		[]uint64
-	hash		uint64
+	bg       *BBaggage
+	learners []*DepLearner
+	totals   []uint64
+	hash     uint64
 }
 
 func NewBelief(cfg Config, task *rlglue.TaskSpec) (this *Belief) {
@@ -52,16 +53,16 @@ func (this *Belief) Compare(o *Belief) (c int) {
 	}
 	return
 }
-func (this *Belief) Next(s, a uint64) (n uint64) {
+func (this *Belief) Next(s discrete.State, a discrete.Action) (n discrete.State) {
 	nv := make([]int32, len(this.learners))
 	for child, learner := range this.learners {
 		nv[child] = learner.Next(s, a)
 	}
-	n = this.bg.task.Obs.Ints.Index(nv)
+	n = discrete.State(this.bg.task.Obs.Ints.Index(nv))
 	return
 }
-func (this *Belief) Update(s, a, n uint64) (nextBelief bayes.TransitionBelief) {
-	k := a + s*this.bg.numActions
+func (this *Belief) Update(s discrete.State, a discrete.Action, n discrete.State) (nextBelief bayes.TransitionBelief) {
+	k := a.Hashcode() + s.Hashcode()*this.bg.numActions
 	if this.totals[k] >= this.bg.cfg.M {
 		nextBelief = this
 		return

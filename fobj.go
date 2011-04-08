@@ -2,16 +2,17 @@ package bayes
 
 import (
 	"go-glue.googlecode.com/hg/rlglue"
+	"go-glue.googlecode.com/hg/rltools/discrete"
 )
 
 type FObjBaggage struct {
-	Task		*rlglue.TaskSpec
-	ObjRanges	rlglue.IntRanges
-	ObjCount	uint64
-	NumObjs		uint64
-	Dimensionality	int
-	Alpha		float64
-	ForgetThreshold	uint64
+	Task            *rlglue.TaskSpec
+	ObjRanges       rlglue.IntRanges
+	ObjCount        uint64
+	NumObjs         uint64
+	Dimensionality  int
+	Alpha           float64
+	ForgetThreshold uint64
 }
 
 func NewFObjBaggage(Task *rlglue.TaskSpec, NumObjs uint64, Alpha float64, ForgetThreshold uint64) (this *FObjBaggage) {
@@ -25,28 +26,28 @@ func NewFObjBaggage(Task *rlglue.TaskSpec, NumObjs uint64, Alpha float64, Forget
 	this.ObjCount = this.ObjRanges.Count()
 	return
 }
-func (this *FObjBaggage) GetObjs(s uint64) (objs []uint64) {
-	objs = make([]uint64, this.NumObjs)
+func (this *FObjBaggage) GetObjs(s discrete.State) (objs []discrete.State) {
+	objs = make([]discrete.State, this.NumObjs)
 	for i := range objs {
-		objs[i] = s % this.ObjCount
-		s /= this.ObjCount
+		objs[i] = s % discrete.State(this.ObjCount)
+		s /= discrete.State(this.ObjCount)
 	}
 	return
 }
-func (this *FObjBaggage) GetState(objs []uint64) (s uint64) {
+func (this *FObjBaggage) GetState(objs []discrete.State) (s discrete.State) {
 	values := make([]int32, len(this.Task.Obs.Ints))
 	for i, obj := range objs {
-		objValues := this.ObjRanges.Values(obj)
+		objValues := this.ObjRanges.Values(obj.Hashcode())
 		copy(values[i*this.Dimensionality:(i+1)*this.Dimensionality], objValues)
 	}
-	s = this.Task.Obs.Ints.Index(values)
+	s = discrete.State(this.Task.Obs.Ints.Index(values))
 	return
 }
 
 type FObjTransition struct {
-	bg	*FObjBaggage
-	ObjFDM	*FDMTransition
-	hash	uint64
+	bg     *FObjBaggage
+	ObjFDM *FDMTransition
+	hash   uint64
 }
 
 func NewFObjTransition(bg *FObjBaggage) (this *FObjTransition) {
@@ -55,10 +56,10 @@ func NewFObjTransition(bg *FObjBaggage) (this *FObjTransition) {
 	var fdmBaggage FDMTransitionBaggage
 	fdmBaggage.NumStates = bg.ObjRanges.Count()
 	fdmBaggage.NumActions = bg.Task.Act.Ints[1].Count()
-	fdmBaggage.NextToOutcome = func(s, n uint64) (o uint64) {
+	fdmBaggage.NextToOutcome = func(s, n discrete.State) (o discrete.State) {
 		return n
 	}
-	fdmBaggage.OutcomeToNext = func(s, o uint64) (n uint64) {
+	fdmBaggage.OutcomeToNext = func(s, o discrete.State) (n discrete.State) {
 		return o
 	}
 	fdmBaggage.Alpha = make([]float64, fdmBaggage.NumStates)
@@ -93,23 +94,23 @@ func (this *FObjTransition) LessThan(other interface{}) bool {
 	}
 	return false
 }
-func (this *FObjTransition) Next(s, a uint64) (n uint64) {
-	avalues := this.bg.Task.Act.Ints.Values(a)
+func (this *FObjTransition) Next(s discrete.State, a discrete.Action) (n discrete.State) {
+	avalues := this.bg.Task.Act.Ints.Values(a.Hashcode())
 	which, act := avalues[0], avalues[1]
 	sobjs := this.bg.GetObjs(s)
-	nobjs := append([]uint64{}, sobjs...)
-	nobjs[which] = this.ObjFDM.Next(sobjs[which], uint64(act))
+	nobjs := append([]discrete.State{}, sobjs...)
+	nobjs[which] = this.ObjFDM.Next(sobjs[which], discrete.Action(act))
 	n = this.bg.GetState(nobjs)
 	return
 }
-func (this *FObjTransition) Update(s, a, n uint64) (next TransitionBelief) {
+func (this *FObjTransition) Update(s discrete.State, a discrete.Action, n discrete.State) (next TransitionBelief) {
 	nt := new(FObjTransition)
 	*nt = *this
-	avalues := this.bg.Task.Act.Ints.Values(a)
+	avalues := this.bg.Task.Act.Ints.Values(a.Hashcode())
 	which, act := avalues[0], avalues[1]
 	sobjs := this.bg.GetObjs(s)
 	nobjs := this.bg.GetObjs(n)
-	nt.ObjFDM = this.ObjFDM.Update(sobjs[which], uint64(act), nobjs[which]).(*FDMTransition)
+	nt.ObjFDM = this.ObjFDM.Update(sobjs[which], discrete.Action(act), nobjs[which]).(*FDMTransition)
 	next = nt
 	return
 }
